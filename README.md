@@ -100,26 +100,6 @@ Supported formats: MP3, WAV, M4A, M4B, FLAC, OGG, AAC
 
 Processes audio at approximately 0.83x real-time speed (1 minute of audio in about 50 seconds). Peak memory usage is around 10-12GB during transcription. Fully utilizes Apple Silicon Neural Engine and GPU.
 
-## Troubleshooting
-
-### App won't launch
-
-If the app fails to launch, run the signature fix:
-```bash
-./fix_signatures.sh
-```
-
-This resolves code signature mismatches between bundled frameworks.
-
-### "App is damaged" warning
-
-macOS Gatekeeper may block unsigned apps. Right-click the app and select "Open" to bypass the warning on first launch.
-
-For distribution, use the notarization script (requires Apple Developer account):
-```bash
-./sign_and_notarize.sh
-```
-
 ## Architecture
 
 Built with PySide6 (Qt for Python) for the UI. Uses MLX Whisper with Metal GPU acceleration for inference. The model is Whisper Large-v3 with 32 encoder and 32 decoder layers. Audio processing handled by FFmpeg, pydub, and mutagen. Packaged with PyInstaller using custom hooks.
