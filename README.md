@@ -2,13 +2,17 @@
 
 A self-contained macOS transcription app using OpenAI's Whisper Large-v3 model with Apple MLX acceleration.
 
+![macOS](https://img.shields.io/badge/macOS-Apple%20Silicon-blue)
+![Python](https://img.shields.io/badge/Python-3.11-green)
+![MLX](https://img.shields.io/badge/MLX-Accelerated-orange)
+
 ## Features
 
 Apple Silicon optimized with MLX for GPU-accelerated inference. The app is completely self-contained with the model, Python runtime, and FFmpeg bundled. Uses Whisper Large-v3 for high accuracy transcription. Simple drag and drop interface with real-time progress tracking. Export transcriptions to clipboard or save as text files. All processing happens locally on your machine with no internet connection required.
 
 ## Download
 
-**[Download Whisper MLX Transcriber v1.0.0](https://drive.google.com/file/d/1JqbpoPmQIRNWqEBWyZahuJ1Eg_4ZgH9N/view?usp=sharing)** (3.7GB)
+**[Download Whisper MLX Transcriber v1.0.0](https://drive.google.com/file/d/1JqbpoPmQIRNWqEBWyZahuJ1Eg_4ZgH9N/view?usp=sharing)** (3.1GB)
 
 Download the DMG file, open it, and drag the app to your Applications folder. No installation or dependencies required.
 
