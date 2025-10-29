@@ -42,3 +42,8 @@ Icon
 # Temporary files
 *.tmp
 *.bak
+
+# Release packages
+releases/
+*.dmg
+*.zip
