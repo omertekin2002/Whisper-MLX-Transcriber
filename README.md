@@ -16,20 +16,14 @@ A self-contained macOS transcription app using OpenAI's Whisper Large-v3 model w
 - 💾 **Export Options** - Copy to clipboard or save as text file
 - 🔒 **Privacy First** - 100% offline, no data leaves your machine
 
-## Download Pre-Built App
+## Installation
 
-**[Download Latest Release](../../releases)** (3.7GB)
-
-Simply download the `.app`, drag to Applications, and run. No installation required.
-
-## Building from Source
-
-### One-Command Installation
+### One-Command Setup
 
 The easiest way to build the app - just run:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/Whisper-MLX-Transcriber.git
+git clone https://github.com/omertekin2002/Whisper-MLX-Transcriber.git
 cd Whisper-MLX-Transcriber
 ./install.sh
 ```
@@ -72,7 +66,7 @@ brew install python@3.11
 
 2. **Clone the repository**
 ```bash
-git clone https://github.com/YOUR_USERNAME/Whisper-MLX-Transcriber.git
+git clone https://github.com/omertekin2002/Whisper-MLX-Transcriber.git
 cd Whisper-MLX-Transcriber
 ```
 
