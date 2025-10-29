@@ -1,0 +1,16 @@
+# Build dependencies
+pyinstaller>=6.0.0
+
+# ML and inference
+mlx>=0.11.0
+mlx-whisper>=0.4.0
+
+# GUI
+PySide6>=6.6.0
+
+# Audio processing
+pydub>=0.25.1
+mutagen>=1.47.0
+
+# Model download
+huggingface_hub>=0.20.0
