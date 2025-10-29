@@ -98,7 +98,7 @@ Supported formats: MP3, WAV, M4A, M4B, FLAC, OGG, AAC
 
 ## Performance
 
-Processes audio at approximately 0.83x real-time speed (1 minute of audio in about 50 seconds). Peak memory usage is around 4-5GB during transcription. Fully utilizes Apple Silicon Neural Engine and GPU.
+Processes audio at approximately 0.83x real-time speed (1 minute of audio in about 50 seconds). Peak memory usage is around 10-12GB during transcription. Fully utilizes Apple Silicon Neural Engine and GPU.
 
 ## Troubleshooting
 
