@@ -27,3 +27,7 @@ rm -rf build dist "Whisper MLX Transcriber.spec"
 # Result: dist/Whisper MLX Transcriber.app
 
 echo "Built app at: $APP_DIR/dist/Whisper MLX Transcriber.app"
+
+# Sign the app ad-hoc (required for Apple Silicon)
+echo "Signing app ad-hoc..."
+codesign --force --deep -s - "$APP_DIR/dist/Whisper MLX Transcriber.app"
