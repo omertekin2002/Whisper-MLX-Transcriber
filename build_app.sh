@@ -28,7 +28,6 @@ rm -rf build dist "Whisper MLX Transcriber.spec"
 
 echo "Built app at: $APP_DIR/dist/Whisper MLX Transcriber.app"
 
-# Fix code signatures to prevent launch issues
-echo ""
-echo "Fixing code signatures..."
-"$APP_DIR/fix_signatures.sh"
+# Sign the app ad-hoc (required for Apple Silicon)
+echo "Signing app ad-hoc..."
+codesign --force --deep -s - "$APP_DIR/dist/Whisper MLX Transcriber.app"
