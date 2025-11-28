@@ -2,6 +2,8 @@
 
 A self-contained macOS transcription app using OpenAI's Whisper Large-v3 model with Apple MLX acceleration.
 
+> **Note:** This app is ad-hoc signed to run locally on your machine. If you distribute it to other Macs, users may need to right-click and select "Open" to bypass Gatekeeper.
+
 ![macOS](https://img.shields.io/badge/macOS-Apple%20Silicon-blue)
 ![Python](https://img.shields.io/badge/Python-3.11-green)
 ![MLX](https://img.shields.io/badge/MLX-Accelerated-orange)
@@ -55,9 +57,9 @@ git clone https://github.com/omertekin2002/Whisper-MLX-Transcriber.git
 cd Whisper-MLX-Transcriber
 ```
 
-Create Python virtual environment:
+Create Python virtual environment (use python3.11 to ensure correct version):
 ```bash
-python3 -m venv ../whisper_mlx_env
+python3.11 -m venv ../whisper_mlx_env
 source ../whisper_mlx_env/bin/activate
 ```
 

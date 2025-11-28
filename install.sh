@@ -50,8 +50,14 @@ install_python() {
     echo "   ✓ Python 3.11 installed successfully"
 }
 
+# Determine python command
+PYTHON_CMD="python3"
+if command -v python3.11 &> /dev/null; then
+    PYTHON_CMD="python3.11"
+fi
+
 # Check for Python 3.11+
-if ! command -v python3 &> /dev/null; then
+if ! command -v $PYTHON_CMD &> /dev/null; then
     echo "⚠️  Python 3 is not installed"
     echo ""
     read -p "Would you like to install Python automatically? (y/n) " -n 1 -r
@@ -63,6 +69,12 @@ if ! command -v python3 &> /dev/null; then
             install_homebrew
         fi
         install_python
+        # Update PYTHON_CMD
+        if command -v python3.11 &> /dev/null; then
+            PYTHON_CMD="python3.11"
+        else
+            PYTHON_CMD="python3"
+        fi
     else
         echo ""
         echo "❌ Python is required to build this app."
@@ -72,7 +84,7 @@ if ! command -v python3 &> /dev/null; then
     fi
 fi
 
-PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+PYTHON_VERSION=$($PYTHON_CMD -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
 PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
 PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
 
@@ -87,8 +99,13 @@ if [[ $PYTHON_MAJOR -lt 3 ]] || [[ $PYTHON_MAJOR -eq 3 && $PYTHON_MINOR -lt 11 ]
             install_homebrew
         fi
         install_python
-        # Update PYTHON_VERSION after installation
-        PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+        # Update PYTHON_CMD and VERSION after installation
+        if command -v python3.11 &> /dev/null; then
+            PYTHON_CMD="python3.11"
+        else
+            PYTHON_CMD="python3"
+        fi
+        PYTHON_VERSION=$($PYTHON_CMD -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
     else
         echo ""
         echo "❌ Python 3.11+ is required (found $PYTHON_VERSION)"
@@ -97,7 +114,7 @@ if [[ $PYTHON_MAJOR -lt 3 ]] || [[ $PYTHON_MAJOR -eq 3 && $PYTHON_MINOR -lt 11 ]
     fi
 fi
 
-echo "✓ Python $PYTHON_VERSION detected"
+echo "✓ Python $PYTHON_VERSION detected using $PYTHON_CMD"
 
 # Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -110,7 +127,7 @@ echo "[1/4] Creating virtual environment..."
 if [[ -d "$VENV_DIR" ]]; then
     echo "   Virtual environment already exists, skipping..."
 else
-    python3 -m venv "$VENV_DIR"
+    $PYTHON_CMD -m venv "$VENV_DIR"
     echo "   ✓ Virtual environment created at $VENV_DIR"
 fi
 
