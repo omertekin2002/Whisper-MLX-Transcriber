@@ -27,8 +27,3 @@ rm -rf build dist "Whisper MLX Transcriber.spec"
 # Result: dist/Whisper MLX Transcriber.app
 
 echo "Built app at: $APP_DIR/dist/Whisper MLX Transcriber.app"
-
-# Fix code signatures to prevent launch issues
-echo ""
-echo "Fixing code signatures..."
-"$APP_DIR/fix_signatures.sh"
