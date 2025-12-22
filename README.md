@@ -89,6 +89,7 @@ You can also use the included Xcode project to build the app:
 2. Select the "Whisper MLX Transcriber" scheme.
 3. Click "Build" (Cmd+B) or "Run" (Cmd+R).
    - This executes the `build_app.sh` script, producing the app bundle in `dist/`.
+   - The script will automatically set up the virtual environment and download the model if they are missing (requires Python 3.11+ to be installed).
 
 ### FFmpeg Binary
 
