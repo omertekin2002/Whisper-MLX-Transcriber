@@ -82,6 +82,15 @@ The built app will be at: `dist/Whisper MLX Transcriber.app`
 
 </details>
 
+### Xcode Project
+
+You can also use the included Xcode project to build the app:
+1. Open `WhisperApp.xcodeproj` in Xcode.
+2. Select the "Whisper MLX Transcriber" scheme.
+3. Click "Build" (Cmd+B) or "Run" (Cmd+R).
+   - This executes the `build_app.sh` script, producing the app bundle in `dist/`.
+   - The script will automatically set up the virtual environment and download the model if they are missing (requires Python 3.11+ to be installed).
+
 ### FFmpeg Binary
 
 The app includes a static arm64 FFmpeg binary (59MB) that only depends on system frameworks. It's already included in `bin/ffmpeg`.

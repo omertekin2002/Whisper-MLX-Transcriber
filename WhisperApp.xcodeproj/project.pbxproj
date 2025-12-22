@@ -1,0 +1,147 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		72404DF9BFBA511AA7451B34 /* prepare_model.py in Sources */ = {isa = PBXBuildFile; fileRef = 4CEE4186B03EF20E6CF948A6 /* prepare_model.py */; };
+		7D67454E9CA45E725CDFE50A /* main.py in Sources */ = {isa = PBXBuildFile; fileRef = 910C4B338E1B3A00D9AF42DC /* main.py */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		097F4513965E72C846552E21 /* build_app.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = build_app.sh; path = ../build_app.sh; sourceTree = SOURCE_ROOT; };
+		2EE9487CBA7A62A107B20AB4 /* requirements.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = requirements.txt; path = ../requirements.txt; sourceTree = SOURCE_ROOT; };
+		4CEE4186B03EF20E6CF948A6 /* prepare_model.py */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.python; name = prepare_model.py; path = ../prepare_model.py; sourceTree = SOURCE_ROOT; };
+		910C4B338E1B3A00D9AF42DC /* main.py */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.python; name = main.py; path = ../main.py; sourceTree = SOURCE_ROOT; };
+		E08040EBB2E79832412CF492 /* install.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = install.sh; path = ../install.sh; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		08FB7794FE84155DC02AAC07 /* WhisperApp */ = {
+			isa = PBXGroup;
+			children = (
+				910C4B338E1B3A00D9AF42DC /* main.py */,
+				097F4513965E72C846552E21 /* build_app.sh */,
+				E08040EBB2E79832412CF492 /* install.sh */,
+				2EE9487CBA7A62A107B20AB4 /* requirements.txt */,
+				4CEE4186B03EF20E6CF948A6 /* prepare_model.py */,
+			);
+			name = WhisperApp;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXLegacyTarget section */
+		D28A88AD04BD588D00E68795 /* Whisper MLX Transcriber */ = {
+			isa = PBXLegacyTarget;
+			buildArgumentsString = "$(ACTION)";
+			buildConfigurationList = 1DEB923108733DC00010E9CD /* Build configuration list for PBXLegacyTarget "Whisper MLX Transcriber" */;
+			buildPhases = (
+				951B4905A32444EFE3F0CEA9 /* Sources */,
+			);
+			buildToolPath = "$(PROJECT_DIR)/../build_app.sh";
+			buildWorkingDirectory = "$(PROJECT_DIR)/..";
+			dependencies = (
+			);
+			name = "Whisper MLX Transcriber";
+			passBuildSettingsInEnvironment = 1;
+			productName = "Whisper MLX Transcriber";
+		};
+/* End PBXLegacyTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB923508733DC00010E9CD /* Build configuration list for PBXProject "Whisper MLX Transcriber" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 1;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 08FB7794FE84155DC02AAC07 /* WhisperApp */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D28A88AD04BD588D00E68795 /* Whisper MLX Transcriber */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		951B4905A32444EFE3F0CEA9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7D67454E9CA45E725CDFE50A /* main.py in Sources */,
+				72404DF9BFBA511AA7451B34 /* prepare_model.py in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		1DEB923208733DC00010E9CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				DEBUGGING_SYMBOLS = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				OPTIMIZATION_CFLAGS = "-O0";
+				PRODUCT_NAME = "Whisper MLX Transcriber";
+			};
+			name = Debug;
+		};
+		1DEB923308733DC00010E9CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				DEBUGGING_SYMBOLS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_OPTIMIZATION_LEVEL = s;
+				PRODUCT_NAME = "Whisper MLX Transcriber";
+			};
+			name = Release;
+		};
+		1DEB923608733DC00010E9CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		1DEB923708733DC00010E9CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB923108733DC00010E9CD /* Build configuration list for PBXLegacyTarget "Whisper MLX Transcriber" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB923208733DC00010E9CD /* Debug */,
+				1DEB923308733DC00010E9CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1DEB923508733DC00010E9CD /* Build configuration list for PBXProject "Whisper MLX Transcriber" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB923608733DC00010E9CD /* Debug */,
+				1DEB923708733DC00010E9CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}
