@@ -5,25 +5,45 @@ from pathlib import Path
 from shutil import which
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QTextEdit,
-    QFileDialog, QHBoxLayout, QProgressBar
+    QFileDialog, QHBoxLayout, QProgressBar, QComboBox
 )
 from PySide6.QtCore import Qt, QObject, QThread, Signal, QTimer
 
 import mlx_whisper
+from prepare_model import MODELS, get_model_path, download_model
 
 APP_TITLE = "Whisper MLX Transcriber"
 EST_SPEED_FACTOR = 1.2  # estimated processing time = duration * factor (keeps UI under 100% until done)
 MIN_EST_SECONDS = 30.0  # if duration probing fails, use at least 30s to drive progress
 
+LANGUAGES = {
+    "Auto-Detect": None,
+    "English": "en",
+    "Spanish": "es",
+    "French": "fr",
+    "German": "de",
+    "Italian": "it",
+    "Portuguese": "pt",
+    "Dutch": "nl",
+    "Turkish": "tr",
+    "Russian": "ru",
+    "Japanese": "ja",
+    "Chinese": "zh",
+    "Korean": "ko",
+}
 
 def resource_path(relative: str) -> str:
     base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base_path, relative)
 
 
-def embedded_model_dir() -> str:
-    path = resource_path(os.path.join("Models", "whisper-large-v3-mlx"))
-    return path
+def get_model_dir(model_name: str) -> str:
+    # First check if we're in a bundle and have it there
+    bundle_path = resource_path(os.path.join("Models", f"whisper-{model_name}-mlx"))
+    if os.path.isdir(bundle_path):
+        return bundle_path
+    # Otherwise check the local Models directory
+    return str(get_model_path(model_name))
 
 
 def embedded_ffmpeg_path() -> str | None:
@@ -35,12 +55,14 @@ def ensure_ffmpeg_on_path() -> None:
     sys_ffmpeg = which("ffmpeg")
     if sys_ffmpeg:
         sys_dir = os.path.dirname(sys_ffmpeg)
-        os.environ["PATH"] = f"{sys_dir}:{os.environ.get('PATH','')}"
+        if sys_dir not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = f"{sys_dir}:{os.environ.get('PATH','')}"
         return
     bndl = embedded_ffmpeg_path()
     if bndl:
         bdir = os.path.dirname(bndl)
-        os.environ["PATH"] = f"{os.environ.get('PATH','')}:{bdir}"
+        if bdir not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = f"{os.environ.get('PATH','')}:{bdir}"
         return
     raise RuntimeError("ffmpeg not found. Please install via Homebrew: brew install ffmpeg")
 
@@ -99,10 +121,11 @@ class TranscribeWorker(QObject):
     finished = Signal(str)
     failed = Signal(str)
 
-    def __init__(self, audio_path: str, model_dir: str):
+    def __init__(self, audio_path: str, model_dir: str, language: str | None):
         super().__init__()
         self.audio_path = audio_path
         self.model_dir = model_dir
+        self.language = language
 
     def run(self):
         try:
@@ -110,10 +133,26 @@ class TranscribeWorker(QObject):
             result = mlx_whisper.transcribe(
                 self.audio_path,
                 path_or_hf_repo=self.model_dir,
-                language=None
+                language=self.language
             )
             txt = result.get("text", "")
             self.finished.emit(txt)
+        except Exception as e:
+            self.failed.emit(str(e))
+
+
+class DownloadWorker(QObject):
+    finished = Signal(bool)
+    failed = Signal(str)
+
+    def __init__(self, model_name: str):
+        super().__init__()
+        self.model_name = model_name
+
+    def run(self):
+        try:
+            success = download_model(self.model_name)
+            self.finished.emit(success)
         except Exception as e:
             self.failed.emit(str(e))
 
@@ -126,7 +165,7 @@ class MainWindow(QWidget):
 
         self.current_file: str | None = None
         self.thread: QThread | None = None
-        self.worker: TranscribeWorker | None = None
+        self.worker: QObject | None = None
 
         # progress tracking
         self.progress_timer: QTimer | None = None
@@ -135,10 +174,26 @@ class MainWindow(QWidget):
 
         layout = QVBoxLayout(self)
 
-        title = QLabel("🎙️ Whisper Large‑v3 (MLX) Transcriber")
+        title = QLabel("🎙️ Whisper MLX Transcriber")
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("font-size: 22px; font-weight: bold;")
         layout.addWidget(title)
+
+        # Settings Row
+        settings_row = QHBoxLayout()
+        
+        settings_row.addWidget(QLabel("Model:"))
+        self.model_combo = QComboBox()
+        self.model_combo.addItems(list(MODELS.keys()))
+        self.model_combo.setCurrentText("large-v3")
+        settings_row.addWidget(self.model_combo)
+
+        settings_row.addWidget(QLabel("Language:"))
+        self.lang_combo = QComboBox()
+        self.lang_combo.addItems(list(LANGUAGES.keys()))
+        settings_row.addWidget(self.lang_combo)
+        
+        layout.addLayout(settings_row)
 
         self.drop = DropLabel(self.on_file_selected)
         layout.addWidget(self.drop)
@@ -165,7 +220,7 @@ class MainWindow(QWidget):
 
         layout.addLayout(btn_row)
 
-        self.status = JLabel = QLabel("Ready")
+        self.status = QLabel("Ready")
         self.status.setStyleSheet("color: #666;")
         layout.addWidget(self.status)
 
@@ -192,6 +247,8 @@ class MainWindow(QWidget):
     def set_busy(self, busy: bool, determinate: bool):
         self.transcribe_btn.setEnabled(not busy)
         self.select_btn.setEnabled(not busy)
+        self.model_combo.setEnabled(not busy)
+        self.lang_combo.setEnabled(not busy)
         self.copy_btn.setEnabled(False if busy else bool(self.text.toPlainText()))
         self.save_btn.setEnabled(False if busy else bool(self.text.toPlainText()))
         self.progress.setVisible(busy)
@@ -230,11 +287,44 @@ class MainWindow(QWidget):
     def transcribe(self):
         if not self.current_file:
             return
-        model_dir = embedded_model_dir()
+            
+        model_name = self.model_combo.currentText()
+        model_dir = get_model_dir(model_name)
+        
         if not os.path.isdir(model_dir):
-            self.status.setText("Embedded model not found. Please run the Model Prep step.")
+            self.status.setText(f"Model '{model_name}' not found. Downloading...")
+            self.download_and_transcribe(model_name)
             return
 
+        self._start_transcription(model_dir)
+
+    def download_and_transcribe(self, model_name: str):
+        self.set_busy(True, determinate=False)
+        self.text.setPlainText(f"Downloading model '{model_name}'...\nThis only happens once per model.")
+        
+        self.thread = QThread(self)
+        self.worker = DownloadWorker(model_name)
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.on_download_done)
+        self.worker.failed.connect(self.on_download_error)
+        self.thread.start()
+
+    def on_download_done(self, success: bool):
+        self._cleanup_thread()
+        if success:
+            model_name = self.model_combo.currentText()
+            self._start_transcription(get_model_dir(model_name))
+        else:
+            self.on_download_error("Failed to download model.")
+
+    def on_download_error(self, err: str):
+        self._cleanup_thread()
+        self.text.setPlainText(f"Download Error: {err}")
+        self.status.setText("Error downloading model")
+        self.set_busy(False, determinate=True)
+
+    def _start_transcription(self, model_dir: str):
         self.text.clear()
         self.text.setPlainText("Processing... this may take a few minutes...\n")
 
@@ -263,8 +353,11 @@ class MainWindow(QWidget):
             self.progress_timer.start(200)
 
         # worker thread
+        selected_lang_key = self.lang_combo.currentText()
+        language = LANGUAGES.get(selected_lang_key)
+        
         self.thread = QThread(self)
-        self.worker = TranscribeWorker(self.current_file, model_dir)
+        self.worker = TranscribeWorker(self.current_file, model_dir, language)
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
         self.worker.finished.connect(self.on_transcribe_done)
