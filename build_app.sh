@@ -59,16 +59,7 @@ fi
 # 5. Check/Download Model
 if [ ! -d "$APP_DIR/Models/whisper-large-v3-mlx" ]; then
     echo "Model not found. Downloading..."
-    # We can't actually download 3GB in this sandbox environment probably, and verify it fully
-    # But the script logic is what matters.
-    # In sandbox, I'll mock this step if I run it.
-    echo "Running prepare_model.py (mocking if in test env)"
-    if [ "${TEST_ENV:-0}" -eq 1 ]; then
-        mkdir -p Models/whisper-large-v3-mlx
-        touch Models/whisper-large-v3-mlx/config.json
-    else
-        python prepare_model.py
-    fi
+    python prepare_model.py
 fi
 
 # --- Build ---
