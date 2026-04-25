@@ -1,6 +1,6 @@
 # Whisper MLX Transcriber
 
-A local Apple Silicon transcription tool using Whisper models through MLX. It now runs as a Python script with a locally hosted web interface instead of a packaged desktop app.
+A local Apple Silicon transcription tool using Whisper models through MLX. It runs as a Python script with a locally hosted web interface.
 
 ## What It Does
 
