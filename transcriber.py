@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import os
 import re
 import subprocess
@@ -155,6 +156,23 @@ def transcribe_audio(
         language=language_code,
     )
     return result.get("text", "").strip()
+
+
+def release_transcription_memory() -> None:
+    gc.collect()
+
+    try:
+        import mlx.core as mx
+
+        mx.synchronize()
+        if hasattr(mx, "clear_cache"):
+            mx.clear_cache()
+        elif hasattr(mx, "metal") and hasattr(mx.metal, "clear_cache"):
+            mx.metal.clear_cache()
+    except Exception:
+        pass
+
+    gc.collect()
 
 
 def _duration_from_mutagen(path: Path) -> float | None:

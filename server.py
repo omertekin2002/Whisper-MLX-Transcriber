@@ -24,6 +24,7 @@ from transcriber import (
     estimate_duration_seconds,
     get_model_path,
     is_model_available,
+    release_transcription_memory,
     resolve_language,
     transcribe_audio,
 )
@@ -31,6 +32,7 @@ from transcriber import (
 APP_DIR = Path(__file__).resolve().parent
 WEB_DIR = APP_DIR / "web"
 UPLOAD_DIR = Path(tempfile.gettempdir()) / "whisper_mlx_transcriber"
+IDLE_UNLOAD_SECONDS = 30.0
 
 
 @dataclass
@@ -56,6 +58,10 @@ app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 _jobs: dict[str, Job] = {}
 _jobs_lock = threading.Lock()
 _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="transcribe")
+_cleanup_lock = threading.Lock()
+_pending_transcriptions = 0
+_idle_cleanup_timer: threading.Timer | None = None
+_last_transcription_finished_at = 0.0
 
 
 @app.get("/")
@@ -119,6 +125,7 @@ def create_transcription(
     with _jobs_lock:
         _jobs[job_id] = job
 
+    _mark_transcription_submitted()
     _executor.submit(_run_job, job_id, audio_path, hf_token.strip() or None)
     return {"jobId": job_id}
 
@@ -190,6 +197,57 @@ def _run_job(job_id: str, audio_path: Path, hf_token: str | None) -> None:
         )
     finally:
         shutil.rmtree(audio_path.parent, ignore_errors=True)
+        _mark_transcription_finished()
+
+
+def _mark_transcription_submitted() -> None:
+    global _idle_cleanup_timer, _pending_transcriptions
+
+    with _cleanup_lock:
+        _pending_transcriptions += 1
+        if _idle_cleanup_timer is not None:
+            _idle_cleanup_timer.cancel()
+            _idle_cleanup_timer = None
+
+
+def _mark_transcription_finished() -> None:
+    global _last_transcription_finished_at, _pending_transcriptions
+
+    with _cleanup_lock:
+        _pending_transcriptions = max(0, _pending_transcriptions - 1)
+        _last_transcription_finished_at = time.time()
+        if _pending_transcriptions == 0:
+            _schedule_idle_cleanup_locked()
+
+
+def _schedule_idle_cleanup_locked(delay: float = IDLE_UNLOAD_SECONDS) -> None:
+    global _idle_cleanup_timer
+
+    if _idle_cleanup_timer is not None:
+        _idle_cleanup_timer.cancel()
+
+    _idle_cleanup_timer = threading.Timer(delay, _cleanup_after_idle)
+    _idle_cleanup_timer.daemon = True
+    _idle_cleanup_timer.start()
+
+
+def _cleanup_after_idle() -> None:
+    global _idle_cleanup_timer
+
+    with _cleanup_lock:
+        if _pending_transcriptions > 0:
+            _idle_cleanup_timer = None
+            return
+
+        idle_seconds = time.time() - _last_transcription_finished_at
+        if idle_seconds < IDLE_UNLOAD_SECONDS:
+            _schedule_idle_cleanup_locked(IDLE_UNLOAD_SECONDS - idle_seconds)
+            return
+
+        _idle_cleanup_timer = None
+
+    release_transcription_memory()
+    print("Released MLX transcription memory after idle timeout.", flush=True)
 
 
 def _get_job(job_id: str) -> Job:

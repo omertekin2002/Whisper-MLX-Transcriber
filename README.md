@@ -42,6 +42,8 @@ If the selected model is not already in `Models/`, it downloads automatically be
 
 The web UI includes an optional `HF Token` field. The token is sent only with that transcription request and is used only when a model download is needed. You can leave it empty, but authenticated downloads can avoid rate limits and may be faster.
 
+After a transcription finishes, the server waits 30 seconds for another job. If no new transcription starts in that window, it releases Python and MLX/Metal transcription memory caches.
+
 Supported audio formats depend on FFmpeg. Common formats include MP3, WAV, M4A, M4B, FLAC, OGG, and AAC.
 
 ## Common Commands
