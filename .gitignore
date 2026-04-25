@@ -12,6 +12,7 @@ __pycache__/
 env/
 venv/
 ENV/
+.venv/
 whisper_mlx_env/
 *.egg-info/
 
@@ -40,6 +41,7 @@ Icon
 *.log
 
 # Temporary files
+tmp/
 *.tmp
 *.bak
 

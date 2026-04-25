@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Whisper MLX Transcriber</title>
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Localhost</p>
+          <h1>Whisper MLX</h1>
+        </div>
+        <div class="signal-strip" aria-hidden="true">
+          <span style="--h: 26%"></span>
+          <span style="--h: 58%"></span>
+          <span style="--h: 38%"></span>
+          <span style="--h: 82%"></span>
+          <span style="--h: 46%"></span>
+          <span style="--h: 72%"></span>
+          <span style="--h: 32%"></span>
+          <span style="--h: 64%"></span>
+          <span style="--h: 42%"></span>
+          <span style="--h: 88%"></span>
+          <span style="--h: 36%"></span>
+          <span style="--h: 70%"></span>
+        </div>
+      </header>
+
+      <section class="workbench">
+        <form class="control-rail" id="transcribeForm">
+          <label class="drop-zone" id="dropZone">
+            <input id="fileInput" name="file" type="file" accept=".mp3,.wav,.m4a,.m4b,.flac,.ogg,.aac,audio/*" />
+            <span class="drop-kicker">Audio Source</span>
+            <strong id="dropTitle">Drop audio here</strong>
+            <span id="fileMeta">or choose a file</span>
+          </label>
+
+          <div class="field-grid">
+            <label>
+              <span>Model</span>
+              <select id="modelSelect" name="model"></select>
+            </label>
+            <label>
+              <span>Language</span>
+              <select id="languageSelect" name="language"></select>
+            </label>
+          </div>
+
+          <button class="primary-action" id="startButton" type="submit" disabled>
+            <span>Transcribe</span>
+          </button>
+
+          <div class="meter-block" aria-live="polite">
+            <div class="meter-copy">
+              <span id="statusText">Idle</span>
+              <strong id="progressText">0%</strong>
+            </div>
+            <div class="meter-track">
+              <div id="progressBar" class="meter-fill"></div>
+            </div>
+          </div>
+        </form>
+
+        <section class="transcript-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Transcript</p>
+              <h2 id="transcriptTitle">No job yet</h2>
+            </div>
+            <div class="button-row">
+              <button id="copyButton" type="button" disabled>Copy</button>
+              <button id="downloadButton" type="button" disabled>TXT</button>
+            </div>
+          </div>
+          <textarea id="transcriptText" spellcheck="false" readonly></textarea>
+        </section>
+      </section>
+    </main>
+
+    <script src="/static/app.js" type="module"></script>
+  </body>
+</html>

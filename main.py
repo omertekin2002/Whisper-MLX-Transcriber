@@ -1,406 +1,113 @@
+from __future__ import annotations
+
+import argparse
 import sys
-import os
-import time
 from pathlib import Path
-from shutil import which
-from PySide6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QTextEdit,
-    QFileDialog, QHBoxLayout, QProgressBar, QComboBox
-)
-from PySide6.QtCore import Qt, QObject, QThread, Signal, QTimer
 
-import mlx_whisper
-from prepare_model import MODELS, get_model_path, download_model
-
-APP_TITLE = "Whisper MLX Transcriber"
-EST_SPEED_FACTOR = 1.2  # estimated processing time = duration * factor (keeps UI under 100% until done)
-MIN_EST_SECONDS = 30.0  # if duration probing fails, use at least 30s to drive progress
-
-LANGUAGES = {
-    "Auto-Detect": None,
-    "English": "en",
-    "Spanish": "es",
-    "French": "fr",
-    "German": "de",
-    "Italian": "it",
-    "Portuguese": "pt",
-    "Dutch": "nl",
-    "Turkish": "tr",
-    "Russian": "ru",
-    "Japanese": "ja",
-    "Chinese": "zh",
-    "Korean": "ko",
-}
-
-def resource_path(relative: str) -> str:
-    base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
-    return os.path.join(base_path, relative)
+from transcriber import DEFAULT_MODEL, LANGUAGES, MODELS, download_model, is_model_available, transcribe_audio
 
 
-def get_model_dir(model_name: str) -> str:
-    # First check if we're in a bundle and have it there
-    bundle_path = resource_path(os.path.join("Models", f"whisper-{model_name}-mlx"))
-    if os.path.isdir(bundle_path):
-        return bundle_path
-    # Otherwise check the local Models directory
-    return str(get_model_path(model_name))
+def _language_choices() -> list[str]:
+    codes = [code for code in LANGUAGES.values() if code]
+    labels = [label.lower().replace(" ", "-") for label in LANGUAGES if LANGUAGES[label]]
+    return ["auto", *codes, *labels]
 
 
-def embedded_ffmpeg_path() -> str | None:
-    candidate = Path(resource_path(os.path.join("bin", "ffmpeg")))
-    return str(candidate) if candidate.exists() else None
-
-
-def ensure_ffmpeg_on_path() -> None:
-    sys_ffmpeg = which("ffmpeg")
-    if sys_ffmpeg:
-        sys_dir = os.path.dirname(sys_ffmpeg)
-        if sys_dir not in os.environ.get("PATH", ""):
-            os.environ["PATH"] = f"{sys_dir}:{os.environ.get('PATH','')}"
-        return
-    bndl = embedded_ffmpeg_path()
-    if bndl:
-        bdir = os.path.dirname(bndl)
-        if bdir not in os.environ.get("PATH", ""):
-            os.environ["PATH"] = f"{os.environ.get('PATH','')}:{bdir}"
-        return
-    raise RuntimeError("ffmpeg not found. Please install via Homebrew: brew install ffmpeg")
-
-
-def get_audio_duration_seconds(file_path: str) -> float | None:
-    # Try pydub (ffmpeg)
+def serve_command(args: argparse.Namespace) -> int:
     try:
-        ensure_ffmpeg_on_path()
-        from pydub import AudioSegment
-        audio = AudioSegment.from_file(file_path)
-        return len(audio) / 1000.0
-    except Exception:
-        pass
-    # Try mutagen (no ffmpeg)
-    try:
-        from mutagen import File as MutagenFile
-        mf = MutagenFile(file_path)
-        if mf is not None and getattr(mf, 'info', None) and getattr(mf.info, 'length', None):
-            return float(mf.info.length)
-    except Exception:
-        pass
-    return None
+        from server import run_server
+    except ModuleNotFoundError as exc:
+        missing = exc.name or "web dependency"
+        raise SystemExit(
+            f"Missing dependency '{missing}'. Run ./install.sh or install requirements.txt first."
+        ) from exc
+
+    run_server(host=args.host, port=args.port, open_browser=not args.no_open)
+    return 0
 
 
-class DropLabel(QLabel):
-    def __init__(self, on_file_selected):
-        super().__init__("Drop audio file here or click 'Select File'")
-        self.setAlignment(Qt.AlignCenter)
-        self.setAcceptDrops(True)
-        self.on_file_selected = on_file_selected
-        self.setStyleSheet(
-            """
-            QLabel {
-                border: 2px dashed #888;
-                color: #aaa;
-                padding: 30px;
-                font-size: 16px;
-                border-radius: 8px;
-            }
-            """
-        )
+def transcribe_command(args: argparse.Namespace) -> int:
+    text = transcribe_audio(
+        audio_path=Path(args.audio),
+        model_name=args.model,
+        language=args.language,
+        download_if_missing=not args.no_download,
+    )
 
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-
-    def dropEvent(self, event):
-        urls = event.mimeData().urls()
-        if urls:
-            local_path = urls[0].toLocalFile()
-            if local_path:
-                self.on_file_selected(local_path)
+    if args.output:
+        output = Path(args.output).expanduser()
+        output.write_text(text, encoding="utf-8")
+        print(f"Wrote transcript to {output}")
+    else:
+        print(text)
+    return 0
 
 
-class TranscribeWorker(QObject):
-    finished = Signal(str)
-    failed = Signal(str)
-
-    def __init__(self, audio_path: str, model_dir: str, language: str | None):
-        super().__init__()
-        self.audio_path = audio_path
-        self.model_dir = model_dir
-        self.language = language
-
-    def run(self):
-        try:
-            ensure_ffmpeg_on_path()
-            result = mlx_whisper.transcribe(
-                self.audio_path,
-                path_or_hf_repo=self.model_dir,
-                language=self.language
-            )
-            txt = result.get("text", "")
-            self.finished.emit(txt)
-        except Exception as e:
-            self.failed.emit(str(e))
+def download_model_command(args: argparse.Namespace) -> int:
+    download_model(args.model)
+    return 0
 
 
-class DownloadWorker(QObject):
-    finished = Signal(bool)
-    failed = Signal(str)
-
-    def __init__(self, model_name: str):
-        super().__init__()
-        self.model_name = model_name
-
-    def run(self):
-        try:
-            success = download_model(self.model_name)
-            self.finished.emit(success)
-        except Exception as e:
-            self.failed.emit(str(e))
+def models_command(_: argparse.Namespace) -> int:
+    longest = max(len(name) for name in MODELS)
+    for name, repo in MODELS.items():
+        status = "downloaded" if is_model_available(name) else "missing"
+        default = " default" if name == DEFAULT_MODEL else ""
+        print(f"{name:<{longest}}  {status:<10}  {repo}{default}")
+    return 0
 
 
-class MainWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle(APP_TITLE)
-        self.resize(900, 720)
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="whisper-transcriber",
+        description="Local Whisper MLX transcription server and command line tool.",
+    )
+    subparsers = parser.add_subparsers(dest="command")
 
-        self.current_file: str | None = None
-        self.thread: QThread | None = None
-        self.worker: QObject | None = None
+    serve = subparsers.add_parser("serve", help="start the local web interface")
+    serve.add_argument("--host", default="127.0.0.1", help="server host")
+    serve.add_argument("--port", type=int, default=8765, help="server port")
+    serve.add_argument("--no-open", action="store_true", help="do not open a browser automatically")
+    serve.set_defaults(func=serve_command)
 
-        # progress tracking
-        self.progress_timer: QTimer | None = None
-        self.progress_start_time: float = 0.0
-        self.progress_total_seconds: float | None = None
+    transcribe = subparsers.add_parser("transcribe", help="transcribe one audio file from the terminal")
+    transcribe.add_argument("audio", help="audio file to transcribe")
+    transcribe.add_argument("-m", "--model", default=DEFAULT_MODEL, choices=sorted(MODELS), help="Whisper MLX model")
+    transcribe.add_argument(
+        "-l",
+        "--language",
+        default="auto",
+        choices=_language_choices(),
+        help="language code or label; use auto to detect",
+    )
+    transcribe.add_argument("-o", "--output", help="write transcript to this text file")
+    transcribe.add_argument("--no-download", action="store_true", help="fail if the selected model is missing")
+    transcribe.set_defaults(func=transcribe_command)
 
-        layout = QVBoxLayout(self)
+    download = subparsers.add_parser("download-model", help="download a Whisper MLX model")
+    download.add_argument("model", nargs="?", default=DEFAULT_MODEL, choices=sorted(MODELS))
+    download.set_defaults(func=download_model_command)
 
-        title = QLabel("🎙️ Whisper MLX Transcriber")
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 22px; font-weight: bold;")
-        layout.addWidget(title)
+    models = subparsers.add_parser("models", help="list configured models and local availability")
+    models.set_defaults(func=models_command)
 
-        # Settings Row
-        settings_row = QHBoxLayout()
-        
-        settings_row.addWidget(QLabel("Model:"))
-        self.model_combo = QComboBox()
-        self.model_combo.addItems(list(MODELS.keys()))
-        self.model_combo.setCurrentText("large-v3")
-        settings_row.addWidget(self.model_combo)
-
-        settings_row.addWidget(QLabel("Language:"))
-        self.lang_combo = QComboBox()
-        self.lang_combo.addItems(list(LANGUAGES.keys()))
-        settings_row.addWidget(self.lang_combo)
-        
-        layout.addLayout(settings_row)
-
-        self.drop = DropLabel(self.on_file_selected)
-        layout.addWidget(self.drop)
-
-        btn_row = QHBoxLayout()
-        self.select_btn = QPushButton("📁 Select File")
-        self.select_btn.clicked.connect(self.select_file)
-        btn_row.addWidget(self.select_btn)
-
-        self.transcribe_btn = QPushButton("▶️ Transcribe")
-        self.transcribe_btn.setEnabled(False)
-        self.transcribe_btn.clicked.connect(self.transcribe)
-        btn_row.addWidget(self.transcribe_btn)
-
-        self.copy_btn = QPushButton("📋 Copy")
-        self.copy_btn.setEnabled(False)
-        self.copy_btn.clicked.connect(self.copy_text)
-        btn_row.addWidget(self.copy_btn)
-
-        self.save_btn = QPushButton("💾 Save TXT")
-        self.save_btn.setEnabled(False)
-        self.save_btn.clicked.connect(self.save_text)
-        btn_row.addWidget(self.save_btn)
-
-        layout.addLayout(btn_row)
-
-        self.status = QLabel("Ready")
-        self.status.setStyleSheet("color: #666;")
-        layout.addWidget(self.status)
-
-        self.progress = QProgressBar()
-        self.progress.setVisible(False)
-        layout.addWidget(self.progress)
-
-        self.text = QTextEdit()
-        self.text.setReadOnly(True)
-        layout.addWidget(self.text, 1)
-
-    def on_file_selected(self, path: str):
-        self.current_file = path
-        name = os.path.basename(path)
-        self.drop.setText(f"✓ {name}\nClick 'Transcribe' to start")
-        self.status.setText(f"Loaded: {name}")
-        self.transcribe_btn.setEnabled(True)
-
-    def select_file(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Select Audio", "", "Audio Files (*.mp3 *.wav *.m4a *.m4b *.flac *.ogg *.aac);;All Files (*.*)")
-        if path:
-            self.on_file_selected(path)
-
-    def set_busy(self, busy: bool, determinate: bool):
-        self.transcribe_btn.setEnabled(not busy)
-        self.select_btn.setEnabled(not busy)
-        self.model_combo.setEnabled(not busy)
-        self.lang_combo.setEnabled(not busy)
-        self.copy_btn.setEnabled(False if busy else bool(self.text.toPlainText()))
-        self.save_btn.setEnabled(False if busy else bool(self.text.toPlainText()))
-        self.progress.setVisible(busy)
-        if busy:
-            if determinate:
-                self.progress.setMinimum(0)
-                self.progress.setMaximum(100)
-                self.progress.setValue(0)
-            else:
-                self.progress.setMinimum(0)
-                self.progress.setMaximum(0)  # indeterminate
-        else:
-            self.progress.setMaximum(100)
-            self.progress.setValue(100)
-
-    def _cleanup_thread(self):
-        if self.thread:
-            self.thread.quit()
-            self.thread.wait(100)
-        self.thread = None
-        self.worker = None
-        # stop progress timer
-        if self.progress_timer:
-            self.progress_timer.stop()
-            self.progress_timer.deleteLater()
-            self.progress_timer = None
-
-    def _tick_progress(self):
-        if self.progress_total_seconds is None:
-            return
-        elapsed = time.time() - self.progress_start_time
-        est_total = self.progress_total_seconds * EST_SPEED_FACTOR
-        pct = int(min(95, max(1, (elapsed / est_total) * 100)))
-        self.progress.setValue(pct)
-
-    def transcribe(self):
-        if not self.current_file:
-            return
-            
-        model_name = self.model_combo.currentText()
-        model_dir = get_model_dir(model_name)
-        
-        if not os.path.isdir(model_dir):
-            self.status.setText(f"Model '{model_name}' not found. Downloading...")
-            self.download_and_transcribe(model_name)
-            return
-
-        self._start_transcription(model_dir)
-
-    def download_and_transcribe(self, model_name: str):
-        self.set_busy(True, determinate=False)
-        self.text.setPlainText(f"Downloading model '{model_name}'...\nThis only happens once per model.")
-        
-        self.thread = QThread(self)
-        self.worker = DownloadWorker(model_name)
-        self.worker.moveToThread(self.thread)
-        self.thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.on_download_done)
-        self.worker.failed.connect(self.on_download_error)
-        self.thread.start()
-
-    def on_download_done(self, success: bool):
-        self._cleanup_thread()
-        if success:
-            model_name = self.model_combo.currentText()
-            self._start_transcription(get_model_dir(model_name))
-        else:
-            self.on_download_error("Failed to download model.")
-
-    def on_download_error(self, err: str):
-        self._cleanup_thread()
-        self.text.setPlainText(f"Download Error: {err}")
-        self.status.setText("Error downloading model")
-        self.set_busy(False, determinate=True)
-
-    def _start_transcription(self, model_dir: str):
-        self.text.clear()
-        self.text.setPlainText("Processing... this may take a few minutes...\n")
-
-        # determine duration for determinate progress; force determinate with fallback
-        dur = get_audio_duration_seconds(self.current_file)
-        if dur is None:
-            # fallback: use conservative estimate based on file size (~1MB ≈ 60s for speech) capped
-            try:
-                size_mb = max(1.0, os.path.getsize(self.current_file) / (1024 * 1024))
-                dur = max(MIN_EST_SECONDS, min(size_mb * 60.0, 3 * 3600.0))
-                self.status.setText("Transcribing… (estimated)")
-            except Exception:
-                dur = MIN_EST_SECONDS
-                self.status.setText("Transcribing… (estimated)")
-        else:
-            self.status.setText("Transcribing…")
-
-        self.progress_total_seconds = dur
-        self.progress_start_time = time.time()
-        self.set_busy(True, determinate=True)
-
-        if self.progress_timer is None:
-            self.progress_timer = QTimer(self)
-            self.progress_timer.timeout.connect(self._tick_progress)
-        if not self.progress_timer.isActive():
-            self.progress_timer.start(200)
-
-        # worker thread
-        selected_lang_key = self.lang_combo.currentText()
-        language = LANGUAGES.get(selected_lang_key)
-        
-        self.thread = QThread(self)
-        self.worker = TranscribeWorker(self.current_file, model_dir, language)
-        self.worker.moveToThread(self.thread)
-        self.thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.on_transcribe_done)
-        self.worker.failed.connect(self.on_transcribe_error)
-        self.worker.finished.connect(self._cleanup_thread)
-        self.worker.failed.connect(self._cleanup_thread)
-        self.thread.start()
-
-    def on_transcribe_done(self, txt: str):
-        self.text.setPlainText(txt)
-        self.status.setText("✓ Transcription complete")
-        self.copy_btn.setEnabled(True)
-        self.save_btn.setEnabled(True)
-        self.set_busy(False, determinate=True)
-
-    def on_transcribe_error(self, err: str):
-        self.text.setPlainText(f"Error: {err}")
-        self.status.setText("Error during transcription")
-        self.set_busy(False, determinate=True)
-
-    def copy_text(self):
-        QApplication.clipboard().setText(self.text.toPlainText())
-        self.status.setText("Copied to clipboard")
-
-    def save_text(self):
-        default = "transcript.txt"
-        if self.current_file:
-            base = Path(self.current_file).stem
-            default = f"{base} - Transcript.txt"
-        path, _ = QFileDialog.getSaveFileName(self, "Save Transcript", default, "Text Files (*.txt)")
-        if path:
-            Path(path).write_text(self.text.toPlainText(), encoding="utf-8")
-            self.status.setText(f"Saved: {path}")
+    return parser
 
 
-def main():
-    app = QApplication(sys.argv)
-    w = MainWindow()
-    w.show()
-    sys.exit(app.exec())
+def main(argv: list[str] | None = None) -> int:
+    args_list = list(sys.argv[1:] if argv is None else argv)
+    if not args_list:
+        args_list = ["serve"]
+    elif args_list[0].startswith("-") and args_list[0] not in {"-h", "--help"}:
+        args_list = ["serve", *args_list]
+
+    parser = build_parser()
+    args = parser.parse_args(args_list)
+    if not hasattr(args, "func"):
+        parser.print_help()
+        return 2
+    return args.func(args)
 
 
 if __name__ == "__main__":
-    import multiprocessing as mp
-    mp.freeze_support()
-    main()
+    raise SystemExit(main())
