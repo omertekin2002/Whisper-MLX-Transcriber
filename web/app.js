@@ -13,6 +13,7 @@ const els = {
   fileMeta: document.querySelector("#fileMeta"),
   modelSelect: document.querySelector("#modelSelect"),
   languageSelect: document.querySelector("#languageSelect"),
+  hfTokenInput: document.querySelector("#hfTokenInput"),
   startButton: document.querySelector("#startButton"),
   statusText: document.querySelector("#statusText"),
   progressText: document.querySelector("#progressText"),
@@ -120,6 +121,7 @@ async function startTranscription() {
   body.append("file", state.file);
   body.append("model", els.modelSelect.value);
   body.append("language", els.languageSelect.value);
+  body.append("hf_token", els.hfTokenInput.value.trim());
 
   try {
     const response = await fetch("/api/transcriptions", {
@@ -186,6 +188,7 @@ function setBusy(isBusy) {
   els.startButton.disabled = isBusy || !state.file;
   els.modelSelect.disabled = isBusy;
   els.languageSelect.disabled = isBusy;
+  els.hfTokenInput.disabled = isBusy;
   els.fileInput.disabled = isBusy;
 }
 

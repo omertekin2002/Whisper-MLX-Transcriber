@@ -9,6 +9,7 @@ The app does not send audio to a remote transcription service. Audio is uploaded
 - macOS on Apple Silicon
 - Python 3.11 or newer
 - Internet access for the first model download
+- Optional Hugging Face token for authenticated model downloads
 - Enough disk space for Whisper model files
 - The bundled `bin/ffmpeg`, or another `ffmpeg` available on `PATH`
 
@@ -38,6 +39,8 @@ The browser usually opens automatically. If it does not, open the URL manually.
 4. Click `Transcribe`.
 
 If the selected model is not already in `Models/`, it downloads automatically before transcription starts. The default model is `large-v3`, which is several GB. Pick `tiny`, `base`, or `small` for a faster first run.
+
+The web UI includes an optional `HF Token` field. The token is sent only with that transcription request and is used only when a model download is needed. You can leave it empty, but authenticated downloads can avoid rate limits and may be faster.
 
 Supported audio formats depend on FFmpeg. Common formats include MP3, WAV, M4A, M4B, FLAC, OGG, and AAC.
 
@@ -80,11 +83,19 @@ Download a specific model:
 python main.py download-model small
 ```
 
+Download with a Hugging Face token:
+
+```bash
+python main.py download-model small --hf-token hf_your_token_here
+```
+
 Transcribe from the terminal:
 
 ```bash
 python main.py transcribe ~/Desktop/audio.m4a --model small --language auto --output transcript.txt
 ```
+
+You can also provide a token through `HF_TOKEN` or `HUGGING_FACE_HUB_TOKEN` instead of passing `--hf-token`.
 
 Print CLI help:
 

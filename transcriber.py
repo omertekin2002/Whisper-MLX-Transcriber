@@ -51,7 +51,7 @@ def is_model_available(model_name: str) -> bool:
     return model_path.is_dir() and any(model_path.iterdir())
 
 
-def download_model(model_name: str) -> Path:
+def download_model(model_name: str, hf_token: str | None = None) -> Path:
     _validate_model_name(model_name)
 
     from huggingface_hub import snapshot_download
@@ -60,17 +60,17 @@ def download_model(model_name: str) -> Path:
     target_dir.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"Downloading '{model_name}' from {MODELS[model_name]}")
-    snapshot_download(repo_id=MODELS[model_name], local_dir=str(target_dir))
+    snapshot_download(repo_id=MODELS[model_name], local_dir=str(target_dir), token=_resolve_hf_token(hf_token))
     return target_dir
 
 
-def ensure_model(model_name: str, download_if_missing: bool = True) -> Path:
+def ensure_model(model_name: str, download_if_missing: bool = True, hf_token: str | None = None) -> Path:
     model_path = get_model_path(model_name)
     if is_model_available(model_name):
         return model_path
     if not download_if_missing:
         raise FileNotFoundError(f"Model '{model_name}' is not downloaded. Run: python main.py download-model {model_name}")
-    return download_model(model_name)
+    return download_model(model_name, hf_token=hf_token)
 
 
 def resolve_language(language: str | None) -> str | None:
@@ -137,13 +137,14 @@ def transcribe_audio(
     model_name: str = DEFAULT_MODEL,
     language: str | None = None,
     download_if_missing: bool = True,
+    hf_token: str | None = None,
 ) -> str:
     path = Path(audio_path).expanduser()
     if not path.is_file():
         raise FileNotFoundError(f"Audio file not found: {path}")
 
     ensure_ffmpeg_on_path()
-    model_path = ensure_model(model_name, download_if_missing=download_if_missing)
+    model_path = ensure_model(model_name, download_if_missing=download_if_missing, hf_token=hf_token)
     language_code = resolve_language(language)
 
     import mlx_whisper
@@ -197,6 +198,18 @@ def _prepend_path(directory: Path) -> None:
     entries = [Path(item).resolve() for item in os.environ.get("PATH", "").split(os.pathsep) if item]
     if directory not in entries:
         os.environ["PATH"] = f"{directory}{os.pathsep}{os.environ.get('PATH', '')}"
+
+
+def _resolve_hf_token(hf_token: str | None) -> str | None:
+    token = (hf_token or "").strip()
+    if token:
+        return token
+
+    for env_name in ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN"):
+        token = os.environ.get(env_name, "").strip()
+        if token:
+            return token
+    return None
 
 
 def _validate_model_name(model_name: str) -> None:

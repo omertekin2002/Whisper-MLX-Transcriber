@@ -90,6 +90,7 @@ def create_transcription(
     file: UploadFile = File(...),
     model: str = Form(DEFAULT_MODEL),
     language: str = Form("auto"),
+    hf_token: str = Form(""),
 ) -> dict:
     if model not in MODELS:
         raise HTTPException(status_code=400, detail=f"Unknown model: {model}")
@@ -118,7 +119,7 @@ def create_transcription(
     with _jobs_lock:
         _jobs[job_id] = job
 
-    _executor.submit(_run_job, job_id, audio_path)
+    _executor.submit(_run_job, job_id, audio_path, hf_token.strip() or None)
     return {"jobId": job_id}
 
 
@@ -152,7 +153,7 @@ def run_server(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = T
     uvicorn.run(app, host=host, port=port, log_level="info")
 
 
-def _run_job(job_id: str, audio_path: Path) -> None:
+def _run_job(job_id: str, audio_path: Path, hf_token: str | None) -> None:
     _update_job(job_id, status="running", stage="Preparing", started_at=time.time(), progress=2)
     try:
         ensure_ffmpeg_on_path()
@@ -160,11 +161,16 @@ def _run_job(job_id: str, audio_path: Path) -> None:
 
         if not is_model_available(job.model):
             _update_job(job_id, stage=f"Downloading {job.model}", progress=3)
-            download_model(job.model)
+            download_model(job.model, hf_token=hf_token)
 
         estimate = estimate_duration_seconds(audio_path)
         _update_job(job_id, stage="Transcribing", estimated_seconds=estimate, progress=5)
-        transcript = transcribe_audio(audio_path, model_name=job.model, language=job.language, download_if_missing=False)
+        transcript = transcribe_audio(
+            audio_path,
+            model_name=job.model,
+            language=job.language,
+            download_if_missing=False,
+        )
         _update_job(
             job_id,
             status="completed",

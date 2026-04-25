@@ -32,6 +32,7 @@ def transcribe_command(args: argparse.Namespace) -> int:
         model_name=args.model,
         language=args.language,
         download_if_missing=not args.no_download,
+        hf_token=args.hf_token,
     )
 
     if args.output:
@@ -44,7 +45,7 @@ def transcribe_command(args: argparse.Namespace) -> int:
 
 
 def download_model_command(args: argparse.Namespace) -> int:
-    download_model(args.model)
+    download_model(args.model, hf_token=args.hf_token)
     return 0
 
 
@@ -82,10 +83,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     transcribe.add_argument("-o", "--output", help="write transcript to this text file")
     transcribe.add_argument("--no-download", action="store_true", help="fail if the selected model is missing")
+    transcribe.add_argument("--hf-token", help="Hugging Face token to use if the model must be downloaded")
     transcribe.set_defaults(func=transcribe_command)
 
     download = subparsers.add_parser("download-model", help="download a Whisper MLX model")
     download.add_argument("model", nargs="?", default=DEFAULT_MODEL, choices=sorted(MODELS))
+    download.add_argument("--hf-token", help="Hugging Face token for authenticated downloads")
     download.set_defaults(func=download_model_command)
 
     models = subparsers.add_parser("models", help="list configured models and local availability")
