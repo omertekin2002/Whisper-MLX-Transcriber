@@ -117,6 +117,7 @@ Available model choices:
 - `medium`
 - `large-v3`
 - `turbo`
+- `turbo-q4`
 
 The default is `large-v3`.
 

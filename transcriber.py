@@ -13,7 +13,8 @@ MODELS = {
     "small": "mlx-community/whisper-small-mlx-4bit",
     "medium": "mlx-community/whisper-medium-mlx-4bit",
     "large-v3": "mlx-community/whisper-large-v3-mlx",
-    "turbo": "mlx-community/whisper-large-v3-turbo-mlx",
+    "turbo": "mlx-community/whisper-large-v3-turbo",
+    "turbo-q4": "mlx-community/whisper-large-v3-turbo-q4",
 }
 
 DEFAULT_MODEL = "large-v3"
